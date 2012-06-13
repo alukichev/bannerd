@@ -98,10 +98,10 @@ static int init_animation(struct screen_info *fb, struct animation *a)
 {
     static const char * _path = "/opt/spinner/";
     static const char * _filenames[] = {
-        "spinner01B.bmp", "spinner02B.bmp", "spinner03B.bmp",
-        "spinner04B.bmp", "spinner05B.bmp", "spinner06B.bmp",
-        "spinner07B.bmp", "spinner08B.bmp", "spinner09B.bmp",
-        "spinner10B.bmp"
+        "Hue_alpha_800x480.bmp",		"Hue_alpha_800x480_565.bmp",
+        "Hue_alpha_800x480_argb16.bmp", "Hue_alpha_800x480_xrgb16.bmp",
+        "Hue_alpha_800x480_rgb24.bmp",	"Hue_alpha_800x480_xrgb32.bmp",
+        "8_xrgb32.bmp", "8_xrgb16.bmp", "8_565.bmp", "8_rgb24.bmp"
     };
     static const int _frame_count = sizeof(_filenames) / sizeof(_filenames[0]);
 
@@ -173,6 +173,9 @@ int main(int argc, char **argv) {
 	if (init_animation(&_Fb, &banner))
 		return 1;
 
+	if (banner.frame_count == 1)
+		banner.interval = (unsigned int)-1; /* Sleep more if a single frame */
+
 	if (!Interactive && daemonify())
 		ERR_RET(1, "could not create a daemon");
 	LOG(LOG_INFO, "started");
@@ -188,7 +191,7 @@ int main(int argc, char **argv) {
 		if (rc)
 			break;
 
-		if (banner.frame_count > 1 && banner.interval) {
+		if (banner.frame_count == 1 || banner.interval) {
 			const struct timespec sleep_time = {
 					.tv_sec = banner.interval / 1000,
 					.tv_nsec = (banner.interval % 1000) * 1000000,

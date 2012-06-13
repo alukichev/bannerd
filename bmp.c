@@ -143,6 +143,47 @@ static void *_ParseLineRGB565(unsigned long *out, void *line, int width)
     return in;
 }
 
+static void *_ParseLineARGB1555(unsigned long *out, void *line, int width)
+{
+    unsigned short *in = (unsigned short *)line;
+    int j;
+
+    for (j = 0; j < width; ++j, ++in) {
+        unsigned long b, g, r, a;
+        unsigned long w = (unsigned long)le16toh(*in);
+
+        b = (w & 0x001F) >> 0,  b = (b * 0x100) / 0x20, b <<= 0;
+        g = (w & 0x03E0) >> 5,  g = (g * 0x100) / 0x20, g <<= 8;
+        r = (w & 0x7C00) >> 10, r = (r * 0x100) / 0x20, r <<= 16;
+        a = (w & 0x8000) ? 0xFF000000 : 0x00000000;
+        w = a | r | g | b;
+
+        *out++ = htole32(w);
+    }
+
+    return in;
+}
+
+static void *_ParseLineXRGB1555(unsigned long *out, void *line, int width)
+{
+    unsigned short *in = (unsigned short *)line;
+    int j;
+
+    for (j = 0; j < width; ++j, ++in) {
+        unsigned long b, g, r;
+        unsigned long w = (unsigned long)le16toh(*in);
+
+        b = (w & 0x001F) >> 0,  b = (b * 0x100) / 0x20, b <<= 0;
+        g = (w & 0x03E0) >> 5,  g = (g * 0x100) / 0x20, g <<= 8;
+        r = (w & 0x7C00) >> 10, r = (r * 0x100) / 0x20, r <<= 16;
+        w = 0xFF000000 | r | g | b; /* Alpha channel is 1 */
+
+        *out++ = htole32(w);
+    }
+
+    return in;
+}
+
 static void *_ParseLineRGB888(unsigned long *out, void *line, int width)
 {
     unsigned short *in = (unsigned short *)line;
@@ -218,12 +259,14 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
         unsigned long bpp; /* This field is used if the bitmap has no masks */
     } _mask_parsers[] = {
       {&_ParseLineARGB4444, 0x0F00,    0x00F0,    0x000F,    0xF000,     0},
-      {&_ParseLineRGB4444,  0x0F00,    0x00F0,    0x000F,    0x0000,    16},
+      {&_ParseLineRGB4444,  0x0F00,    0x00F0,    0x000F,    0x0000,     0},
       {&_ParseLineRGB565,   0xF800,    0x07E0,    0x001F,    0x0000,     0},
+      {&_ParseLineARGB1555, 0x7C00,    0x03E0,    0x001F,    0x8000,     0},
+      {&_ParseLineXRGB1555, 0x7C00,    0x03E0,    0x001F,    0x0000,    16},
       {&_ParseLineRGB888,   0x00FF,    0xFF00,    0xFF0000,  0x0000,    24},
+      {&_ParseLineARGB8888, 0x00FF0000,0x0000FF00,0x000000FF,0xFF000000, 32},
       {&_ParseLineRGBA8888, 0xFF000000,0x00FF0000,0x0000FF00,0x000000FF, 0},
-      {&_ParseLineARGB8888, 0x00FF0000,0x0000FF00,0x000000FF,0xFF000000, 0},
-      {&_ParseLineRGBX8888, 0xFF000000,0x00FF0000,0x0000FF00,0x00000000, 32},
+      {&_ParseLineRGBX8888, 0xFF000000,0x00FF0000,0x0000FF00,0x00000000, 0},
     };
 
     /* Handle COREHEADERs first. Only 16bpp 4.4.4.x.x are supported */
@@ -237,8 +280,11 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
             unsigned int i;
 
             for (i = 0; i < ARRAY_SIZE(_mask_parsers); ++i)
-                if (dh->info.bpp == _mask_parsers[i].bpp)
+                if (dh->info.bpp == _mask_parsers[i].bpp) {
+                	LOG(LOG_DEBUG, "Default parser for %ubpp: %u",
+                			dh->info.bpp, i);
                     return _mask_parsers[i].parser;
+                }
         }
 
         /* Try to find parser for bitmasked bitmap */
@@ -247,11 +293,9 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
             unsigned int i;
             struct bitmapinfov3header * h = &dh->infov3;
 
-            /*
-            printf("%s(): bit masks b = %08lX, g = %08lX, r = %08lX, a = %08lX\n",
+            LOG(LOG_DEBUG, "%s(): bit masks b = %08lX, g = %08lX, r = %08lX, a = %08lX",
                    __func__, h->blue_mask, h->green_mask,
                    h->red_mask, h->alpha_mask);
-                   */
 
             for (i = 0; i < ARRAY_SIZE(_mask_parsers); ++i) {
                 const struct _parser_pattern * p = &_mask_parsers[i];
@@ -260,7 +304,7 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
                         && h->green_mask == p->green
                         && h->blue_mask == p->blue
                         && h->alpha_mask == p->transp) {
-                    /* printf("%s(): found parser %d\n", __func__, i); */
+                    LOG(LOG_DEBUG, "%s(): found parser %d", __func__, i);
                     return p->parser;
                 }
             }
@@ -430,10 +474,10 @@ int bmp_read(const char *filename, struct image_info *bitmap)
     r = _ParseBitmap(bmp_buffer, bitmap, bitmap_size, &dib_header);
     free(bmp_buffer);
 
-#if 0
+#if 1
     if (!r)
-        LOG(LOG_DEBUG, "Parsed bitmap: %dx%d, bitmap size in BMP %d bytes",
-        		bitmap->width, bitmap->height, bitmap_size);
+        LOG(LOG_DEBUG, "Parsed bitmap %s: %dx%d, bitmap size in BMP %d bytes",
+        		filename, bitmap->width, bitmap->height, bitmap_size);
 #endif /* 0 */
 
     return (r) ? -1 : 0;
