@@ -1,0 +1,15 @@
+*.[oa]
+*.ko
+*.mod.c
+*.creator*
+.*.cmd
+*~
+*.order
+*.symvers
+.project
+.cproject
+*.config
+*.files
+*.includes
+.settings/
+.tmp_versions/
