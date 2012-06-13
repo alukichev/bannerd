@@ -116,7 +116,7 @@ void fb_close(struct screen_info *sd)
     errno = 0;
     r = ioctl(sd->fd, FBIOPUT_VSCREENINFO, &old_fb_mode);
     LOG(LOG_DEBUG, "restore ioctl() returned %d, "
-            "errno = %d (%s)\n", r, errno, strerror(errno));
+            "errno = %d (%s)", r, errno, strerror(errno));
 
     close(sd->fd);
 }
