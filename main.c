@@ -48,6 +48,7 @@ struct string_list {
 int Interactive = 0; /* Not daemon */
 int LogDebug = 0; /* Do not suppress debug messages when logging */
 int SingleRun = 0; /* Do not repeat the sequence of images, exit instead */
+int PreserveMode = 0; /* Do not restore previous framebuffer mode */
 
 static struct screen_info _Fb;
 
@@ -97,6 +98,9 @@ static int usage(char *cmd, char *msg)
 		                    " configuration)\n");
 	printf("-s                Display the sequence of frames only once,\n"
 		   "                  then exit\n");
+	printf("-p                Do not restore framebuffer mode on exit  \n"
+		   "                  which usually means leaving last frame"
+			                " displayed\n");
 	printf("interval          Interval in milliseconds between frames,\n"
 		   "                  default: 41 (24fps)\n");
 	printf("frame.bmp ...     list of filenames of frames in BMP format\n");
@@ -144,7 +148,7 @@ static int daemonify(void)
 
 static void free_resources(void)
 {
-	fb_close(&_Fb);
+	fb_close(&_Fb, !PreserveMode);
 	LOG(LOG_INFO, "exited");
 }
 
@@ -221,6 +225,10 @@ static int init(int argc, char **argv, struct animation *banner)
 		}
 		if (!strcmp(argv[i], "-s")) {
 			SingleRun = 1;
+			continue;
+		}
+		if (!strcmp(argv[i], "-p")) {
+			PreserveMode = 1;
 			continue;
 		}
 

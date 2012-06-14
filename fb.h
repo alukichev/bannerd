@@ -33,9 +33,9 @@ struct image_info {
 
 
 int fb_init(struct screen_info *sd);
-void fb_close(struct screen_info *sd);
+void fb_close(struct screen_info *sd, int restore_mode);
 int fb_write_bitmap(struct screen_info *sd, int x, int y,
 		struct image_info *bitmap);
-/* int UpdateScreen(struct screen_info * sd, int x, int y, int w, int h); */
+int fb_omap_update_screen(struct screen_info * sd, int x, int y, int w, int h);
 
 #endif /* FB_H */

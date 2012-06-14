@@ -105,7 +105,7 @@ int fb_init(struct screen_info *sd)
     return 0;
 }
 
-void fb_close(struct screen_info *sd)
+void fb_close(struct screen_info *sd, int restore_mode)
 {
     int r;
 
@@ -113,10 +113,12 @@ void fb_close(struct screen_info *sd)
         munmap(sd->fb, sd->fb_size);
 
     /* Try to restore the old mode */
-    errno = 0;
-    r = ioctl(sd->fd, FBIOPUT_VSCREENINFO, &old_fb_mode);
-    LOG(LOG_DEBUG, "restore ioctl() returned %d, "
-            "errno = %d (%s)", r, errno, strerror(errno));
+    if (restore_mode) {
+    	errno = 0;
+    	r = ioctl(sd->fd, FBIOPUT_VSCREENINFO, &old_fb_mode);
+    	LOG(LOG_DEBUG, "restore ioctl() returned %d, "
+    			"errno = %d (%s)", r, errno, strerror(errno));
+    }
 
     close(sd->fd);
 }
