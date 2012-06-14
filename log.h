@@ -7,12 +7,14 @@
 #include <syslog.h>
 
 #define LOG(pri, msg, ...) do { \
-		if(Interactive) { \
-			fprintf(stderr, "%d [%s:%d]: " msg "\n", (pri), __FILE__, __LINE__, ##__VA_ARGS__); \
-			fflush(stderr);								\
-		}										\
-		else \
-			syslog(pri, "[%s:%d]: " msg, __FILE__, __LINE__, ##__VA_ARGS__); \
+		if (pri < LOG_DEBUG || LogDebug) { \
+			if (Interactive) { \
+				fprintf(stderr, "%d [%s:%d]: " msg "\n", (pri), __FILE__, __LINE__, ##__VA_ARGS__); \
+				fflush(stderr);								\
+			} else { \
+				syslog(pri, "[%s:%d]: " msg, __FILE__, __LINE__, ##__VA_ARGS__); \
+			} \
+		} \
 	} while(0)
 
 #define ERR(msg, ...) do {						     \
@@ -26,7 +28,7 @@
 	} while(0)
 
 
-
 extern int Interactive;
+extern int LogDebug;
 
 #endif /* _LOG_H */
