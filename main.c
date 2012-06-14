@@ -47,6 +47,7 @@ struct string_list {
 
 int Interactive = 0; /* Not daemon */
 int LogDebug = 0; /* Do not suppress debug messages when logging */
+int SingleRun = 0; /* Do not repeat the sequence of images, exit instead */
 
 static struct screen_info _Fb;
 
@@ -88,12 +89,14 @@ static int usage(char *cmd, char *msg)
 
 	if (msg)
 		printf("%s\n", msg);
-	printf("Usage: %s [-i] [interval] frame.bmp ...\n\n", command);
+	printf("Usage: %s [-i] [-d] [-s] [interval] frame.bmp ...\n\n", command);
 	printf("-i                Do not fork into the background and log"
 			                " to stdout\n");
 	printf("-d                Do not suppress debug messages in the log\n"
 		   "                  (may also be suppressed by syslog"
 		                    " configuration)\n");
+	printf("-s                Display the sequence of frames only once,\n"
+		   "                  then exit\n");
 	printf("interval          Interval in milliseconds between frames,\n"
 		   "                  default: 41 (24fps)\n");
 	printf("frame.bmp ...     list of filenames of frames in BMP format\n");
@@ -216,6 +219,10 @@ static int init(int argc, char **argv, struct animation *banner)
 			LogDebug = 1;
 			continue;
 		}
+		if (!strcmp(argv[i], "-s")) {
+			SingleRun = 1;
+			continue;
+		}
 
 		if (banner->interval == (unsigned int)-1) {
 			unsigned int v = (unsigned int)strtoul(argv[i], NULL, 0);
@@ -282,6 +289,8 @@ int main(int argc, char **argv) {
 		if (rc)
 			break;
 
+		if (SingleRun && i == banner.frame_count)
+			exit(0);
 		if (banner.frame_count == 1 || banner.interval) {
 			const struct timespec sleep_time = {
 					.tv_sec = banner.interval / 1000,
