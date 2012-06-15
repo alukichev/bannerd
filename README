@@ -1,0 +1,132 @@
+                        A framebuffer animation daemon
+
+  bannerd is a very simple program that reads several bitmap files, forks into
+background and renders them to framebuffer with the configured interval. Since
+all the decompression (if any) work is done at the start, there is very little
+overhead when the animation is rendered. The only thing that the program does
+is memcpy() at the necessary 32 bit aligned location and then sleep until next
+frame. It is mainly intended to be used in embedded Linux systems to display
+e.g. boot animation. For use on desktops many more powerful programs are
+available, e.g. Plymouth (http://www.freedesktop.org/wiki/Software/Plymouth) and
+usplash (https://launchpad.net/usplash).
+
+  Animation that bannerd renders consists of several frames read from BMP files
+in the order given in commandline. It is displayed with configured interval in
+milliseconds or with the default 24fps frequency. It can also consist of one
+frame in which case the program can be made to immediately exit, leaving it on
+screen. Each frame may have different size but is centered on the screen.
+
+  The complete form of its usage is:
+
+  bannerd [-i] [-d] [-s] [interval] frame.bmp ...
+
+  -i                Do not fork into the background and log to stdout
+  -d                Do not suppress debug messages in the log
+                    (may also be suppressed by syslog configuration)
+  -s                Display the sequence of frames only once,
+                    then exit
+  -p                Do not restore framebuffer mode on exit  
+                    which usually means leaving last frame displayed
+  interval          Interval in milliseconds between frames,
+                    default: 41 (24fps)
+  frame.bmp ...     list of filenames of frames in BMP format
+
+
+  REQUIREMENTS
+
+  The program needs a framebuffer driver compiled into the kernel, and it of
+course uses device node /dev/fb0. This one may not be available on your board
+if you are making a root filesystem by yourself or if you use udev/mdev and try
+to run bannerd before any of them creates this device node (e.g., early at boot
+time). In this case create the device node if it does not exist by inserting
+something like
+
+    [ -c /dev/fb0 ] || mknod /dev/fb0 c 29 0
+
+into your boot scripts.
+
+  You need to execute the program with sufficient permissions to open and write
+to framebuffer.
+
+  If you use OMAP CPU, you may need to hack the source code a bit before
+compiling. omapfb driver does not display contents of the framebuffer unless
+you ask it to, so you may need to insert a call to fb_omap_update_screen() into
+main loop (in main()) just after fb_write_bitmap().
+
+
+  USAGE EXAMPLES
+
+  To continuously display animation of 8 frames with movie speed (24 frames
+per second), you could use
+
+    # bannerd 1.bmp 2.bmp 3.bmp 4.bmp 5.bmp 6.bmp 7.bmp 8.bmp
+
+  or just
+
+    # bannerd ?.bmp
+
+  If you want a slower delay between frames, you can specify in in milliseconds
+
+    # bannerd 1000 ?.bmp
+
+  When you no longer need the displayed animation, you can kill the program by
+
+    # pkill -TERM bannerd
+
+  If you want the program to run once through the sequence of frames and then
+exit by itself, you can use
+
+    # bannerd -s ?.bmp
+
+  A useful way to display a single image and exit, leaving it on screen, is
+
+    # bannerd -s -p image.bmp
+
+
+  LIMITATIONS
+
+  The program supports only BMP format. Support for other fomats would require
+either implementing parsers from scratch or an external dependency on a library
+which is not desirable for some embedded systems. Configurable support for PNG
+and some other formats will be added later, though.
+
+  BMP formats recognized by the program are: 16bpp (ARGB4444, XRGB4444, RGB565,
+ARGB1555, XRGB1555), 24bpp (RGB888), 32bpp (ARGB8888, RGBA8888, RGBX8888).
+Monochrome, 2bpp, 4bpp and 8bpp images are not supported. Bitmaps must be
+either uncompressed (most common format) or use bitmasks.
+
+  All the bitmap data is kept in memory in 32bpp mode to simplify rendering and
+not worsen 32bpp bitmap quality at the same time. This means considerable
+amount of memory consumed by the process for large animations: for a 800 x 480
+32bpp bitmap 1500kB of memory are needed. Thus, long fullscreen animations may
+require a lot of memory.
+
+  At the moment, alpha blending of images is not supported.
+  
+
+  SUPPORTED PLATFORMS
+
+  The program is supposed to run on any Linux that has a framebuffer. Its
+functionality, of course, depends on the framebuffer driver (e.g., whether it
+can display images in ARGB32 mode). The program has been tested on i686 :P and
+ARM i.MX28 boards. If you have tested it on your board and it does not work as
+expected, please contact the author(s). It will be very nice to know what is
+the problem there and to fix it for as many platforms as possible.
+
+
+  AUTHOR
+
+  Questions and suggestions are highly appreciated. If you have something to
+ask or to tell, please contact
+
+  Alexander Lukichev <alexander.lukichev@gmail.com>
+
+  You are welcome to contribute to this program, or do whatever you want with
+the source code (provided that you know what you are doing). Please respect the
+license if you change source code, see COPYING for details.
+
+
+
+
+
+  

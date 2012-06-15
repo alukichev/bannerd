@@ -27,10 +27,9 @@
 #define SRV_NAME "bannerd"
 #endif
 
-#include "log.h"
 #include "fb.h"
-
-
+#include "log.h"
+#include "string_list.h"
 
 struct animation {
     int x; /* Center of frames */
@@ -40,45 +39,12 @@ struct animation {
     unsigned int interval;
 };
 
-struct string_list {
-	char *s;
-	struct string_list *next;
-};
-
 int Interactive = 0; /* Not daemon */
 int LogDebug = 0; /* Do not suppress debug messages when logging */
 int SingleRun = 0; /* Do not repeat the sequence of images, exit instead */
 int PreserveMode = 0; /* Do not restore previous framebuffer mode */
 
 static struct screen_info _Fb;
-
-static inline struct string_list *string_list_add(struct string_list **head,
-		struct string_list *tail, char *s)
-{
-	struct string_list *new_tail = malloc(sizeof(struct string_list));
-
-	if (new_tail == NULL)
-		ERR_RET(NULL, "could not allocate memory");
-	new_tail->s = s;
-	new_tail->next = NULL;
-
-	if (tail)
-		tail->next = new_tail;
-	else
-		*head = new_tail;
-
-	return new_tail;
-}
-
-static inline void string_list_destroy(struct string_list *head)
-{
-	while (head) {
-		struct string_list *new_head = head->next;
-
-		free(head);
-		head = new_head;
-	}
-}
 
 static int usage(char *cmd, char *msg)
 {

@@ -1,0 +1,53 @@
+         A framebuffer animation daemon ibuild and installation instructions
+
+  This file explains how to (cross-)compile and install the bannerd program. To
+find out what bannerd means, see README.
+
+
+  BUILD
+
+  To build the program for your board, you should have gcc with glibc or uClibc
+for your target platform. Unpack the sources and run
+
+    $ make CC=<your-target-triplet->gcc
+
+your-target-triplet- may be something like arm-linux- or
+arm-none-linux-gnueabi- for ARM platforms.
+
+  If the compiler complains that it cannot find <linux/omapfb.h> header, provide
+the compiler with the path to Linux headers _that you run in the target_ (your
+PC may have different version of Linux kernel than your target board) by
+
+    $ make CC=<your-target-triplet->gcc \
+      CFLAGS=-I<path-to-Linux-headers-for-the-target>
+
+Example for ARM platform that has Linux headers in /opt/arm/linux/include:
+
+    $ make CC=arm-linux-gcc CFLAGS=-I/opt/arm/linux/include
+
+  To build the program for PC, simply run
+
+    $ make
+
+  All of this will produce dynamically linked executable. If you want to build
+it statically (not use shared libraries), try adding LDFLAGS=-static
+
+    $ make LDFLAGS=-static
+
+  All of this will produce unstripped binaries containing lots of unnecessary
+data. If you do not want it to be there, strip the binary with
+
+    $ <your-target-triplet->strip -d bannerd
+
+
+  INSTALL
+
+  Copy file bannerd to your root filesystem and make root the owner of it. You
+can also use
+
+    $ make ROOTFSDIR=<path-to-rootfs> install && \
+      sudo chown root:root <path-to-rootfs>/bin/bannerd
+
+  If you do not want to make bannerd owned by root, you will have to set
+permissions of the file's owner to be able to write to /dev/fb0.
+

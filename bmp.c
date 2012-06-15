@@ -352,14 +352,21 @@ static int _ParseBitmap(char *from, struct image_info *image,
     return 0;
 }
 
-#if 0
+#if 1
 static void _DumpInfoheader(struct bitmapinfoheader * ih)
 {
-    printf("Header size %lu\nImage %ldx%ldx%hu\nPlanes: %hu\nCompression: %lx\nBitmap size %lu\nResolution: %ldx%ld\nncolors = %lu, nimpcolors = %lu\n",
-           ih->header_size, ih->width, ih->height, ih->bpp, ih->nplanes, ih->compression, ih->bmp_size, ih->hres, ih->vres,
+    LOG(LOG_DEBUG, "Header size %lu\n"
+    		"Image %ldx%ldx%hu\n"
+    		"Planes: %hu\n"
+    		"Compression: %lx\n"
+    		"Bitmap size %lu\n"
+    		"Resolution: %ldx%ld\n"
+    		"ncolors = %lu, nimpcolors = %lu\n",
+           ih->header_size, ih->width, ih->height, ih->bpp,
+           ih->nplanes, ih->compression, ih->bmp_size, ih->hres, ih->vres,
            ih->ncolors, ih->nimpcolors);
 }
-#endif /* 0 */
+#endif /* 1 */
 
 static int _ParseHeaders(const char *filename, int fd,
                      struct bmpfile_header *bh, DIB_HEADER *dh)
@@ -402,9 +409,7 @@ static int _ParseHeaders(const char *filename, int fd,
                 || fst.st_size - bh->bmp_offset < dh->info.bmp_size
                 || dh->info.bmp_size < bitmap_size) {
             LOG(LOG_ERR, "Unsupported BMP format");
-#if 0
-            _DumpInfoheader( &dh->info );
-#endif /* 0 */
+            _DumpInfoheader(&dh->info);
             return -1;
         }
     } else { /* BITMAPCOREHEADER */
