@@ -9,7 +9,7 @@ CFLAGS += -DSRV_NAME=\"$(NAME)\"
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(CFLAGS) -o $(NAME) $(OBJS)
+	$(CC) $(LDFLAGS) -o $(NAME) $(OBJS)
 	
 clean:
 	rm -fr *.o *~ $(NAME)
