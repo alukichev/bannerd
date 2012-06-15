@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
 
 		if (SingleRun && i == banner.frame_count)
 			exit(0);
-		if (banner.frame_count == 1 || banner.interval) {
+		if (banner.interval) {
 			const struct timespec sleep_time = {
 					.tv_sec = banner.interval / 1000,
 					.tv_nsec = (banner.interval % 1000) * 1000000,
