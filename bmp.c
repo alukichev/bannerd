@@ -10,7 +10,6 @@
  *  version 2 as published by the Free Software Foundation.
  */
 
-#include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -22,6 +21,11 @@
 #include "bmp.h"
 #include "fb.h"
 #include "log.h"
+
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif /* _BSD_SOURCE */
+#include <endian.h>
 
 #define BI_RGB          0 /* Bitmap compresion: none */
 #define BI_BITFIELDS    3 /* Bitmap compresion: bitfields */
