@@ -201,7 +201,7 @@ static int init(int argc, char **argv, struct animation *banner)
 		if (banner->interval == (unsigned int)-1) {
 			char *p;
 			unsigned int v = (unsigned int)strtoul(argv[i], &p, 0);
-			int is_fps = *p && !strcmp(p, "fps");
+			int is_fps = (p != argv[i]) && *p && !strcmp(p, "fps");
 
 			if (!*p || is_fps) {
 				if (is_fps) {
