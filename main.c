@@ -199,9 +199,19 @@ static int init(int argc, char **argv, struct animation *banner)
 		}
 
 		if (banner->interval == (unsigned int)-1) {
-			unsigned int v = (unsigned int)strtoul(argv[i], NULL, 0);
+			char *p;
+			unsigned int v = (unsigned int)strtoul(argv[i], &p, 0);
+			int is_fps = *p && !strcmp(p, "fps");
 
-			if (v) {
+			if (!*p || is_fps) {
+				if (is_fps) {
+					if (!v) { /* 0fps */
+						LOG(LOG_WARNING, "0fps argument in cmdline,"
+								" changed to 1fps");
+						v = 1;
+					}
+					v = 1000 / v;
+				}
 				banner->interval = v;
 				continue;
 			}
