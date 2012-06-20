@@ -56,7 +56,8 @@ static int usage(char *cmd, char *msg)
 
 	if (msg)
 		printf("%s\n", msg);
-	printf("Usage: %s [-i] [-d] [-s] [interval] frame.bmp ...\n\n", command);
+	printf("Usage: %s [-i] [-d] [-s] [interval[fps]] frame.bmp ...\n\n",
+			command);
 	printf("-i                Do not fork into the background and log"
 			                " to stdout\n");
 	printf("-d                Do not suppress debug messages in the log\n"
@@ -67,8 +68,9 @@ static int usage(char *cmd, char *msg)
 	printf("-p                Do not restore framebuffer mode on exit  \n"
 		   "                  which usually means leaving last frame"
 			                " displayed\n");
-	printf("interval          Interval in milliseconds between frames,\n"
-		   "                  default: 41 (24fps)\n");
+	printf("interval          Interval in milliseconds between frames.\n"
+		   "                  If \'fps\' suffix is present then it is in\n"
+		   "                  frames per second. Default:  41 (24fps)\n");
 	printf("frame.bmp ...     list of filenames of frames in BMP format\n");
 
 	return (msg) ? 1 : 0;

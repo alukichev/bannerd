@@ -27,8 +27,9 @@ screen. Each frame may have different size but is centered on the screen.
                     then exit
   -p                Do not restore framebuffer mode on exit  
                     which usually means leaving last frame displayed
-  interval          Interval in milliseconds between frames,
-                    default: 41 (24fps)
+  interval          Interval in milliseconds between frames. If \'fps\'
+                    suffix is present then it is in frames per second.
+                    Default:  41 (24fps)
   frame.bmp ...     list of filenames of frames in BMP format
 
 
