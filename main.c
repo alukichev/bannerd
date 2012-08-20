@@ -255,36 +255,53 @@ static inline void center2top_left(struct image_info *image, int cx, int cy,
 	*top_left_y = cy - image->height / 2;
 }
 
+/**
+ * Run the animation specified number of times or infinitely (-1).
+ */
+static int run(struct animation *banner, int count)
+{
+	int i;
+	int rc = 0;
+
+	i = 0;
+	while (1) {
+		int x, y;
+		struct image_info *frame = &banner->frames[i++ % banner->frame_count];
+
+		center2top_left(frame, banner->x, banner->y, &x, &y);
+		rc = fb_write_bitmap(&_Fb, x, y, frame);
+
+		if (rc)
+			break;
+
+		if (SingleRun && i == banner->frame_count)
+			exit(0);
+		if (banner->interval) {
+			const struct timespec sleep_time = {
+					.tv_sec = banner->interval / 1000,
+					.tv_nsec = (banner->interval % 1000) * 1000000,
+			};
+			nanosleep(&sleep_time, NULL);
+		}
+	}
+
+	return rc;
+}
+
 int main(int argc, char **argv) {
 	struct animation banner = { .interval = (unsigned int)-1, };
-	int i;
 	int rc = 0;
 
 	if (init(argc, argv, &banner))
 		return 1;
 	LOG(LOG_INFO, "started");
 
-	i = 0;
-	while (1) {
-		int x, y;
-		struct image_info *frame = &banner.frames[i++ % banner.frame_count];
-
-		center2top_left(frame, banner.x, banner.y, &x, &y);
-		rc = fb_write_bitmap(&_Fb, x, y, frame);
-
-		if (rc)
-			break;
-
-		if (SingleRun && i == banner.frame_count)
-			exit(0);
-		if (banner.interval) {
-			const struct timespec sleep_time = {
-					.tv_sec = banner.interval / 1000,
-					.tv_nsec = (banner.interval % 1000) * 1000000,
-			};
-			nanosleep(&sleep_time, NULL);
-		}
-	}
+/*
+	if (RemoteControl)
+		rc = interpret_commands(&banner);
+	else
+*/
+		rc = run(&banner, -1);
 
 	return rc;
 }
