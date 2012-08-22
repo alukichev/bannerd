@@ -11,6 +11,7 @@
  */
 
 #include <errno.h>
+#include <getopt.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdio.h>
@@ -41,7 +42,7 @@ struct animation {
 
 int Interactive = 0; /* Not daemon */
 int LogDebug = 0; /* Do not suppress debug messages when logging */
-int SingleRun = 0; /* Do not repeat the sequence of images, exit instead */
+int RunCount = -1; /* Repeat a given number of times, then exit */
 int PreserveMode = 0; /* Do not restore previous framebuffer mode */
 
 static struct screen_info _Fb;
@@ -56,24 +57,80 @@ static int usage(char *cmd, char *msg)
 
 	if (msg)
 		printf("%s\n", msg);
-	printf("Usage: %s [-i] [-d] [-s] [interval[fps]] frame.bmp ...\n\n",
+	printf("Usage: %s [options] [interval[fps]] frame.bmp ...\n\n",
 			command);
-	printf("-i                Do not fork into the background and log"
-			                " to stdout\n");
-	printf("-d                Do not suppress debug messages in the log\n"
-		   "                  (may also be suppressed by syslog"
-		                    " configuration)\n");
-	printf("-s                Display the sequence of frames only once,\n"
-		   "                  then exit\n");
-	printf("-p                Do not restore framebuffer mode on exit  \n"
-		   "                  which usually means leaving last frame"
-			                " displayed\n");
-	printf("interval          Interval in milliseconds between frames.\n"
-		   "                  If \'fps\' suffix is present then it is in\n"
-		   "                  frames per second. Default:  41 (24fps)\n");
-	printf("frame.bmp ...     list of filenames of frames in BMP format\n");
+	printf("-D, --no-daemon       Do not fork into the background, log\n"
+		   "                      to stdout\n");
+	printf("-v, --verbose         Do not suppress debug messages in the\n"
+		   "                      log (may also be suppressed by syslog"
+		                        " configuration)\n");
+	printf("-c [<num>],\n"
+		   "--run-count[=<num>]   Display the sequence of frames <num>\n"
+		   "                      times, then exit. If <num> is incorrect\n"
+		   "                      omitted, repeat only once. If it is less\n"
+		   "                      than 1, ignore the option\n");
+	printf("-p, --preserve-mode   Do not restore framebuffer mode on exit\n"
+		   "                      which usually means leaving last frame"
+			                    " displayed\n");
+	printf("interval              Interval in milliseconds between frames.\n"
+		   "                      If \'fps\' suffix is present then it is in\n"
+		   "                      frames per second. Default:  41 (24fps)\n");
+	printf("frame.bmp ...         list of filenames of frames in BMP"
+			                    " format\n");
 
-	return (msg) ? 1 : 0;
+	return 1;
+}
+
+static int get_options(int argc, char **argv)
+{
+	static struct option _longopts[] = {
+			{"no-daemon",	no_argument, 		&Interactive, 1}, /* -D */
+			{"verbose",		no_argument, 		&LogDebug, 1},    /* -v */
+			{"run-count",	optional_argument,	0, 'c'},          /* -c */
+			{"preserve-mode",no_argument,		&PreserveMode, 1},/* -p */
+			{0, 0, 0, 0}
+	};
+
+	while (1) {
+		int option_index = 0;
+		int c = getopt_long(argc, argv, "Dvc::p", _longopts, &option_index);
+
+		if (c == -1)
+			break;
+		switch (c) {
+		case 0: /* Do nothing, the proper flag was set */
+			break;
+
+		case 'D':
+			Interactive = 1;
+			break;
+
+		case 'v':
+			LogDebug = 1;
+			break;
+
+		case 'p':
+			PreserveMode = 1;
+			break;
+
+		case 'c':
+			if (!optarg)
+				RunCount = 1;
+			else {
+				int v = (int)strtol(optarg, NULL, 0);
+
+				if (v > 0)
+					RunCount = v;
+			}
+			break;
+
+		case '?':
+			/* The error message has already been printed by getopts_long() */
+			return -1;
+		}
+	}
+
+	return optind;
 }
 
 static int init_log(void)
@@ -182,24 +239,11 @@ static int init(int argc, char **argv, struct animation *banner)
 
 	init_log();
 
-	for (i = 1; i < argc; ++i) {
-		if (!strcmp(argv[i], "-i")) {
-			Interactive = 1;
-			continue;
-		}
-		if (!strcmp(argv[i], "-d")) {
-			LogDebug = 1;
-			continue;
-		}
-		if (!strcmp(argv[i], "-s")) {
-			SingleRun = 1;
-			continue;
-		}
-		if (!strcmp(argv[i], "-p")) {
-			PreserveMode = 1;
-			continue;
-		}
+	i = get_options(argc, argv);
+	if (i < 0)
+		return usage(argv[0], NULL);
 
+	for ( ; i < argc; ++i) {
 		if (banner->interval == (unsigned int)-1) {
 			char *p;
 			unsigned int v = (unsigned int)strtoul(argv[i], &p, 0);
@@ -260,13 +304,14 @@ static inline void center2top_left(struct image_info *image, int cx, int cy,
  */
 static int run(struct animation *banner, int count)
 {
-	int i;
+	int runs, fnum = 0;
 	int rc = 0;
 
-	i = 0;
-	while (1) {
+	runs = 0;
+	while (count) {
 		int x, y;
-		struct image_info *frame = &banner->frames[i++ % banner->frame_count];
+		struct image_info *frame =
+				&banner->frames[fnum++ % banner->frame_count];
 
 		center2top_left(frame, banner->x, banner->y, &x, &y);
 		rc = fb_write_bitmap(&_Fb, x, y, frame);
@@ -274,8 +319,10 @@ static int run(struct animation *banner, int count)
 		if (rc)
 			break;
 
-		if (SingleRun && i == banner->frame_count)
-			exit(0);
+		if (fnum == banner->frame_count)
+			if (++runs == count)
+				break;
+
 		if (banner->interval) {
 			const struct timespec sleep_time = {
 					.tv_sec = banner->interval / 1000,
@@ -301,7 +348,7 @@ int main(int argc, char **argv) {
 		rc = interpret_commands(&banner);
 	else
 */
-		rc = run(&banner, -1);
+		rc = run(&banner, RunCount);
 
 	return rc;
 }
