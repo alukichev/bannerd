@@ -36,6 +36,7 @@ struct animation {
     int x; /* Center of frames */
     int y; /* Center of frames */
     struct image_info *frames;
+    int frame_num;
     int frame_count;
     unsigned int interval;
 };
@@ -210,6 +211,7 @@ static int init_animation(struct string_list *filenames, int filenames_count,
         return -1;
     }
 
+    a->frame_num = 0;
     a->frame_count = filenames_count;
     a->frames = malloc(filenames_count * sizeof(struct image_info));
     if (a->frames == NULL) {
@@ -300,18 +302,24 @@ static inline void center2top_left(struct image_info *image, int cx, int cy,
 }
 
 /**
- * Run the animation specified number of times or infinitely (-1).
+ * Run the animation specified number of times or infinitely (-1). If
+ * pause_frame is non-negative, stop animation on the frame index pause_frame
+ * after running it count - 1 times (or not running it completely if count
+ * is -1).
+ *
+ * The function may be called multiple times, each time continuing the
+ * animation from where it was paused (the frame it was paused on is displayed
+ * again).
  */
-static int run(struct animation *banner, int count)
+static int run(struct animation *banner, int count, int pause_frame)
 {
-	int runs, fnum = 0;
+	int runs, fnum = banner->frame_num;
 	int rc = 0;
 
 	runs = 0;
 	while (count) {
 		int x, y;
-		struct image_info *frame =
-				&banner->frames[fnum++ % banner->frame_count];
+		struct image_info *frame = &banner->frames[fnum];
 
 		center2top_left(frame, banner->x, banner->y, &x, &y);
 		rc = fb_write_bitmap(&_Fb, x, y, frame);
@@ -319,9 +327,16 @@ static int run(struct animation *banner, int count)
 		if (rc)
 			break;
 
-		if (fnum == banner->frame_count)
+		if (pause_frame >= 0 && fnum == pause_frame)
+			if (count < 0 || (count > 0 && runs == (count - 1)))
+				break;
+
+		if (++fnum == banner->frame_count) {
+			fnum = 0;
+
 			if (++runs == count)
 				break;
+		}
 
 		if (banner->interval) {
 			const struct timespec sleep_time = {
@@ -331,6 +346,8 @@ static int run(struct animation *banner, int count)
 			nanosleep(&sleep_time, NULL);
 		}
 	}
+
+	banner->frame_num = fnum;
 
 	return rc;
 }
@@ -348,7 +365,7 @@ int main(int argc, char **argv) {
 		rc = interpret_commands(&banner);
 	else
 */
-		rc = run(&banner, RunCount);
+		rc = run(&banner, RunCount, -1);
 
 	return rc;
 }
