@@ -45,6 +45,7 @@ int Interactive = 0; /* Not daemon */
 int LogDebug = 0; /* Do not suppress debug messages when logging */
 int RunCount = -1; /* Repeat a given number of times, then exit */
 int PreserveMode = 0; /* Do not restore previous framebuffer mode */
+char *PipePath = NULL; /* A command pipe to control animation */
 
 static struct screen_info _Fb;
 
@@ -73,6 +74,11 @@ static int usage(char *cmd, char *msg)
 	printf("-p, --preserve-mode   Do not restore framebuffer mode on exit\n"
 		   "                      which usually means leaving last frame"
 			                    " displayed\n");
+	printf("-i <fifo>,\n"
+		   "--command-pipe <fifo> Open a named pipe <fifo> and wait for\n"
+		   "                      commands. The pipe should exist. If -c is\n"
+		   "                      specified, it is ignored. See %s(1) man\n"
+		   "                      page for command syntax.\n", command);
 	printf("interval              Interval in milliseconds between frames.\n"
 		   "                      If \'fps\' suffix is present then it is in\n"
 		   "                      frames per second. Default:  41 (24fps)\n");
@@ -88,13 +94,14 @@ static int get_options(int argc, char **argv)
 			{"no-daemon",	no_argument, 		&Interactive, 1}, /* -D */
 			{"verbose",		no_argument, 		&LogDebug, 1},    /* -v */
 			{"run-count",	optional_argument,	0, 'c'},          /* -c */
+			{"command-pipe",required_argument,	0, 'i'},		  /* -i */
 			{"preserve-mode",no_argument,		&PreserveMode, 1},/* -p */
 			{0, 0, 0, 0}
 	};
 
 	while (1) {
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "Dvc::p", _longopts, &option_index);
+		int c = getopt_long(argc, argv, "Dvc::i:p", _longopts, &option_index);
 
 		if (c == -1)
 			break;
@@ -123,6 +130,10 @@ static int get_options(int argc, char **argv)
 				if (v > 0)
 					RunCount = v;
 			}
+			break;
+
+		case 'i':
+			PipePath = optarg;
 			break;
 
 		case '?':
@@ -307,6 +318,10 @@ static inline void center2top_left(struct image_info *image, int cx, int cy,
  * after running it count - 1 times (or not running it completely if count
  * is -1).
  *
+ * If pause_frame is bigger than or equal to the count of frames in the whole
+ * animation, then this means exactly that count is increased by the number of
+ * whole animations that fit into pause_frame.
+ *
  * The function may be called multiple times, each time continuing the
  * animation from where it was paused (the frame it was paused on is displayed
  * again).
@@ -315,6 +330,13 @@ static int run(struct animation *banner, int count, int pause_frame)
 {
 	int runs, fnum = banner->frame_num;
 	int rc = 0;
+
+	if (pause_frame >= banner->frame_count) {
+		if (count < 0)
+			count = 0;
+		count += pause_frame / banner->frame_count;
+		pause_frame %= banner->frame_count;
+	}
 
 	runs = 0;
 	while (count) {
@@ -352,6 +374,92 @@ static int run(struct animation *banner, int count, int pause_frame)
 	return rc;
 }
 
+int interpret_commands(struct animation *banner)
+{
+	FILE *command_fifo;
+	int rc = 0;
+	int line_empty = 1;
+
+	LOG(LOG_INFO, "Waiting for commands from \'%s\'", PipePath);
+	command_fifo = fopen(PipePath, "r");
+	if (command_fifo == NULL)
+		ERR_RET(1, "Could not open command pipe");
+
+	while (1) {
+		static char _w[] = " \t\r\n";
+		char data[255];
+		char *token, *line = &data[0];
+
+		if (!fgets(line, sizeof(data), command_fifo)) /* Must mean only EOF */
+			continue;
+
+		token = strtok_r(line, _w, &line);
+		if (token)
+			line_empty = 0;
+		else
+			continue;
+
+		if (!strncmp(token, "exit", 4)) {
+			LOG(LOG_DEBUG, "Exit requested");
+			break;
+		} else if (!strcmp(token, "run")) {
+			int runs, pause_frame;
+
+			token = strtok_r(line, _w, &line);
+			if (!token) {
+				line_empty = 1;
+				continue;
+			}
+
+			if (token[0] == ';')
+				runs = -1, pause_frame = -1;
+			else {
+				float factor;
+				char *p;
+
+				/* run factor
+				 * or
+				 * run percent%
+				 */
+				factor = (float)strtoul(token, &p, 0);
+				if (p == token) {
+					LOG(LOG_ERR, "Incorrect parameter to \'run\': %s", token);
+					rc = 1;
+					break;
+				}
+				if (p[0] == '%')
+					factor /= 100;
+				else if (p[0] == '.')
+					sscanf(token, "%f", &factor);
+				/* The rest of the token is ignored */
+
+				runs = (int)factor; /* factor is not less than 0 */
+				factor -= runs;
+
+				if (!factor)
+					pause_frame = -1;
+				else {
+					pause_frame = (int)((banner->frame_count - 1) * factor);
+					runs++; /* See description of run() */
+				}
+			}
+			LOG(LOG_DEBUG, "run requested: runs = %d, pause_frame = %d", runs,
+					pause_frame);
+			rc = run(banner, runs, pause_frame);
+			if (rc)
+				break;
+		} else {
+			LOG(LOG_ERR, "Unrecognized command \'%s\'", token);
+			rc = 1;
+			break;
+		}
+	}
+
+	fclose(command_fifo);
+
+	return rc;
+}
+
 int main(int argc, char **argv) {
 	struct animation banner = { .interval = (unsigned int)-1, };
 	int rc = 0;
@@ -360,11 +468,9 @@ int main(int argc, char **argv) {
 		return 1;
 	LOG(LOG_INFO, "started");
 
-/*
-	if (RemoteControl)
+	if (PipePath)
 		rc = interpret_commands(&banner);
 	else
-*/
 		rc = run(&banner, RunCount, -1);
 
 	return rc;
