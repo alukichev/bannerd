@@ -313,33 +313,15 @@ static inline void center2top_left(struct image_info *image, int cx, int cy,
 }
 
 /**
- * Run the animation specified number of times or infinitely (-1). If
- * pause_frame is non-negative, stop animation on the frame index pause_frame
- * after running it count - 1 times (or not running it completely if count
- * is -1).
- *
- * If pause_frame is bigger than or equal to the count of frames in the whole
- * animation, then this means exactly that count is increased by the number of
- * whole animations that fit into pause_frame.
- *
- * The function may be called multiple times, each time continuing the
- * animation from where it was paused (the frame it was paused on is displayed
- * again).
+ * Run the animation either infinitely or until 'frames' frames have been shown
  */
-static int run(struct animation *banner, int count, int pause_frame)
+static int run(struct animation *banner, int frames)
 {
-	int runs, fnum = banner->frame_num;
+	const int infinitely = frames < 0;
+	int fnum = banner->frame_num;
 	int rc = 0;
 
-	if (pause_frame >= banner->frame_count) {
-		if (count < 0)
-			count = 0;
-		count += pause_frame / banner->frame_count;
-		pause_frame %= banner->frame_count;
-	}
-
-	runs = 0;
-	while (count) {
+	while (infinitely || frames--) {
 		int x, y;
 		struct image_info *frame = &banner->frames[fnum];
 
@@ -349,16 +331,8 @@ static int run(struct animation *banner, int count, int pause_frame)
 		if (rc)
 			break;
 
-		if (pause_frame >= 0 && fnum == pause_frame)
-			if (count < 0 || (count > 0 && runs == (count - 1)))
-				break;
-
-		if (++fnum == banner->frame_count) {
+		if (++fnum == banner->frame_count)
 			fnum = 0;
-
-			if (++runs == count)
-				break;
-		}
 
 		if (banner->interval) {
 			const struct timespec sleep_time = {
@@ -403,7 +377,7 @@ int interpret_commands(struct animation *banner)
 			LOG(LOG_DEBUG, "Exit requested");
 			break;
 		} else if (!strcmp(token, "run")) {
-			int runs, pause_frame;
+			int frames;
 
 			token = strtok_r(line, _w, &line);
 			if (!token) {
@@ -412,7 +386,7 @@ int interpret_commands(struct animation *banner)
 			}
 
 			if (token[0] == ';')
-				runs = -1, pause_frame = -1;
+				frames = -1;
 			else {
 				float factor;
 				char *p;
@@ -433,19 +407,13 @@ int interpret_commands(struct animation *banner)
 					sscanf(token, "%f", &factor);
 				/* The rest of the token is ignored */
 
-				runs = (int)factor; /* factor is not less than 0 */
-				factor -= runs;
-
 				if (!factor)
-					pause_frame = -1;
-				else {
-					pause_frame = (int)((banner->frame_count - 1) * factor);
-					runs++; /* See description of run() */
-				}
+					frames = -1;
+				else
+					frames = (int)(banner->frame_count * factor);
 			}
-			LOG(LOG_DEBUG, "run requested: runs = %d, pause_frame = %d", runs,
-					pause_frame);
-			rc = run(banner, runs, pause_frame);
+			LOG(LOG_DEBUG, "run requested for %d frames", frames);
+			rc = run(banner, frames);
 			if (rc)
 				break;
 		} else {
@@ -471,7 +439,7 @@ int main(int argc, char **argv) {
 	if (PipePath)
 		rc = interpret_commands(&banner);
 	else
-		rc = run(&banner, RunCount, -1);
+		rc = run(&banner, RunCount * banner.frame_count); /* OK if <0 too */
 
 	return rc;
 }
