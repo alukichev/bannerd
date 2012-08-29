@@ -28,18 +28,10 @@
 #define SRV_NAME "bannerd"
 #endif
 
+#include "animation.h"
 #include "fb.h"
 #include "log.h"
 #include "string_list.h"
-
-struct animation {
-    int x; /* Center of frames */
-    int y; /* Center of frames */
-    struct image_info *frames;
-    int frame_num;
-    int frame_count;
-    unsigned int interval;
-};
 
 int Interactive = 0; /* Not daemon */
 int LogDebug = 0; /* Do not suppress debug messages when logging */
@@ -209,41 +201,6 @@ static inline int init_proper_exit(void)
 	return 0;
 }
 
-static int init_animation(struct string_list *filenames, int filenames_count,
-		struct screen_info *fb, struct animation *a)
-{
-    int i;
-    struct image_info *frame;
-    int screen_w, screen_h;
-
-    if (!fb->fb_size) {
-        LOG(LOG_ERR, "Unable to init animation against uninitialized "
-                "framebuffer");
-        return -1;
-    }
-
-    a->frame_num = 0;
-    a->frame_count = filenames_count;
-    a->frames = malloc(filenames_count * sizeof(struct image_info));
-    if (a->frames == NULL) {
-        LOG(LOG_ERR, "Unable to get %d bytes of memory for animation",
-            filenames_count * sizeof(struct image_info));
-        return -1;
-    }
-
-    for (i = 0; i < filenames_count; ++i, filenames = filenames->next)
-        if (bmp_read(filenames->s, &a->frames[i]))
-            return -1;
-
-    screen_w = fb->width;
-    screen_h = fb->height;
-    frame = &a->frames[0];
-    a->x = screen_w / 2;
-    a->y = screen_h / 2;
-
-    return 0;
-}
-
 static int init(int argc, char **argv, struct animation *banner)
 {
 	int i;
@@ -290,7 +247,7 @@ static int init(int argc, char **argv, struct animation *banner)
 		return 1;
 	if (init_proper_exit())
 		return 1;
-	if (init_animation(filenames, filenames_count, &_Fb, banner))
+	if (animation_init(filenames, filenames_count, &_Fb, banner))
 		return 1;
 	string_list_destroy(filenames);
 
@@ -303,49 +260,6 @@ static int init(int argc, char **argv, struct animation *banner)
 		ERR_RET(1, "could not create a daemon");
 
 	return 0;
-}
-
-static inline void center2top_left(struct image_info *image, int cx, int cy,
-		int *top_left_x, int *top_left_y)
-{
-	*top_left_x = cx - image->width / 2;
-	*top_left_y = cy - image->height / 2;
-}
-
-/**
- * Run the animation either infinitely or until 'frames' frames have been shown
- */
-static int run(struct animation *banner, int frames)
-{
-	const int infinitely = frames < 0;
-	int fnum = banner->frame_num;
-	int rc = 0;
-
-	while (infinitely || frames--) {
-		int x, y;
-		struct image_info *frame = &banner->frames[fnum];
-
-		center2top_left(frame, banner->x, banner->y, &x, &y);
-		rc = fb_write_bitmap(&_Fb, x, y, frame);
-
-		if (rc)
-			break;
-
-		if (++fnum == banner->frame_count)
-			fnum = 0;
-
-		if (banner->interval) {
-			const struct timespec sleep_time = {
-					.tv_sec = banner->interval / 1000,
-					.tv_nsec = (banner->interval % 1000) * 1000000,
-			};
-			nanosleep(&sleep_time, NULL);
-		}
-	}
-
-	banner->frame_num = fnum;
-
-	return rc;
 }
 
 int interpret_commands(struct animation *banner)
@@ -419,7 +333,7 @@ int interpret_commands(struct animation *banner)
 					frames = (int)(banner->frame_count * factor);
 			}
 			LOG(LOG_DEBUG, "run requested for %d frames", frames);
-			rc = run(banner, frames);
+			rc = animation_run(banner, frames);
 			if (rc)
 				break;
 		} else {
@@ -445,7 +359,7 @@ int main(int argc, char **argv) {
 	if (PipePath)
 		rc = interpret_commands(&banner);
 	else
-		rc = run(&banner, RunCount * banner.frame_count); /* OK if <0 too */
+		rc = animation_run(&banner, RunCount * banner.frame_count);
 
 	return rc;
 }

@@ -1,7 +1,7 @@
 NAME ?= bannerd
 ROOTFSDIR ?= _install
 
-OBJS = bmp.o fb.o main.o
+OBJS = animation.o bmp.o fb.o main.o
 CFLAGS += -DSRV_NAME=\"$(NAME)\"
 
 .PHONY: all clean install
