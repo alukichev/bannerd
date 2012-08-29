@@ -364,8 +364,14 @@ int interpret_commands(struct animation *banner)
 		char data[255];
 		char *token, *line = &data[0];
 
-		if (!fgets(line, sizeof(data), command_fifo)) /* Must mean only EOF */
+		if (!fgets(line, sizeof(data), command_fifo)) { /* EOF */
+			LOG(LOG_DEBUG, "The other end closed pipe, reopening");
+			fclose(command_fifo);
+			command_fifo = fopen(PipePath, "r");
+			if (command_fifo == NULL)
+				ERR_RET(1, "Could not open command pipe");
 			continue;
+		}
 
 		token = strtok_r(line, _w, &line);
 		if (token)
