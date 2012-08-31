@@ -55,26 +55,27 @@ static int usage(char *cmd, char *msg)
 	printf("Usage: %s [options] [interval[fps]] frame.bmp ...\n\n",
 			command);
 	printf("-D, --no-daemon       Do not fork into the background, log\n"
-		   "                      to stdout\n");
+	       "                      to stdout\n");
 	printf("-v, --verbose         Do not suppress debug messages in the\n"
-		   "                      log (may also be suppressed by syslog"
-		                        " configuration)\n");
+	       "                      log (may also be suppressed by syslog"
+	                            " configuration)\n");
 	printf("-c [<num>],\n"
-		   "--run-count[=<num>]   Display the sequence of frames <num>\n"
-		   "                      times, then exit. If <num> is incorrect\n"
-		   "                      omitted, repeat only once. If it is less\n"
-		   "                      than 1, ignore the option\n");
+	       "--run-count[=<num>]   Display the sequence of frames <num>\n"
+	       "                      times, then exit. If <num> is omitted,\n"
+	       "                      repeat only once. If it is less than\n"
+	       "                      1, ignore the option\n");
 	printf("-p, --preserve-mode   Do not restore framebuffer mode on exit\n"
-		   "                      which usually means leaving last frame"
-			                    " displayed\n");
+	       "                      which usually means leaving last frame"
+		                    " displayed\n");
 	printf("-i <fifo>,\n"
-		   "--command-pipe <fifo> Open a named pipe <fifo> and wait for\n"
-		   "                      commands. The pipe should exist. If -c is\n"
-		   "                      specified, it is ignored. See %s(1) man\n"
-		   "                      page for command syntax.\n", command);
+	       "--command-pipe=<fifo> Open a named pipe <fifo> and wait for\n"
+	       "                      commands. The pipe should exist. If -c\n"
+	       "                      is specified, it is ignored. See %s(1)\n"
+	       "                      man page for command syntax.\n",
+	       command);
 	printf("interval              Interval in milliseconds between frames.\n"
-		   "                      If \'fps\' suffix is present then it is in\n"
-		   "                      frames per second. Default:  41 (24fps)\n");
+	       "                      If \'fps\' suffix is present then it is in\n"
+	       "                      frames per second. Default:  41 (24fps)\n");
 	printf("frame.bmp ...         list of filenames of frames in BMP"
 			                    " format\n");
 
@@ -84,17 +85,18 @@ static int usage(char *cmd, char *msg)
 static int get_options(int argc, char **argv)
 {
 	static struct option _longopts[] = {
-			{"no-daemon",	no_argument, 		&Interactive, 1}, /* -D */
-			{"verbose",		no_argument, 		&LogDebug, 1},    /* -v */
-			{"run-count",	optional_argument,	0, 'c'},          /* -c */
-			{"command-pipe",required_argument,	0, 'i'},		  /* -i */
-			{"preserve-mode",no_argument,		&PreserveMode, 1},/* -p */
+			{"no-daemon",	no_argument,&Interactive, 1}, /* -D */
+			{"verbose",	no_argument,&LogDebug, 1},    /* -v */
+			{"run-count",	optional_argument,0, 'c'},    /* -c */
+			{"command-pipe",required_argument,0, 'i'},    /* -i */
+			{"preserve-mode",no_argument,&PreserveMode,1},/* -p */
 			{0, 0, 0, 0}
 	};
 
 	while (1) {
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "Dvc::i:p", _longopts, &option_index);
+		int c = getopt_long(argc, argv, "Dvc::i:p", _longopts,
+				&option_index);
 
 		if (c == -1)
 			break;
@@ -130,7 +132,8 @@ static int get_options(int argc, char **argv)
 			break;
 
 		case '?':
-			/* The error message has already been printed by getopts_long() */
+			/* The error message has already been printed
+			 * by getopts_long() */
 			return -1;
 		}
 	}
@@ -202,6 +205,28 @@ static inline int init_proper_exit(void)
 	return 0;
 }
 
+static inline int parse_interval(char *param, unsigned int *interval)
+{
+	char *p;
+	unsigned int v = (unsigned int)strtoul(param, &p, 0);
+	int is_fps = (p != param) && *p && !strcmp(p, "fps");
+
+	if (!*p || is_fps) {
+		if (is_fps) {
+			if (!v) { /* 0fps */
+				LOG(LOG_WARNING, "0fps argument in cmdline,"
+						" changed to 1fps");
+				v = 1;
+			}
+			v = 1000 / v;
+		}
+		*interval = v;
+		return 0;
+	}
+
+	return -1;
+}
+
 static int init(int argc, char **argv, struct animation *banner)
 {
 	int i;
@@ -215,26 +240,12 @@ static int init(int argc, char **argv, struct animation *banner)
 		return usage(argv[0], NULL);
 
 	for ( ; i < argc; ++i) {
-		if (banner->interval == (unsigned int)-1) {
-			char *p;
-			unsigned int v = (unsigned int)strtoul(argv[i], &p, 0);
-			int is_fps = (p != argv[i]) && *p && !strcmp(p, "fps");
-
-			if (!*p || is_fps) {
-				if (is_fps) {
-					if (!v) { /* 0fps */
-						LOG(LOG_WARNING, "0fps argument in cmdline,"
-								" changed to 1fps");
-						v = 1;
-					}
-					v = 1000 / v;
-				}
-				banner->interval = v;
+		if (banner->interval == (unsigned int)-1)
+			if (!parse_interval(argv[i], &banner->interval))
 				continue;
-			}
-		}
 
-		filenames_tail = string_list_add(&filenames, filenames_tail, argv[i]);
+		filenames_tail = string_list_add(&filenames, filenames_tail,
+				argv[i]);
 		if (!filenames_tail)
 			return 1;
 		else
@@ -253,7 +264,7 @@ static int init(int argc, char **argv, struct animation *banner)
 	string_list_destroy(filenames);
 
 	if (banner->frame_count == 1)
-		banner->interval = (unsigned int)-1; /* Sleep more if a single frame */
+		banner->interval = (unsigned int)-1; /* Single frame */
 	else if (banner->interval == (unsigned int)-1)
 		banner->interval = 1000 / 24; /* 24fps */
 

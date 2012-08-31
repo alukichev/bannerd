@@ -47,8 +47,8 @@ int animation_run(struct animation *banner, int frames)
 
 		if (banner->interval) {
 			const struct timespec sleep_time = {
-					.tv_sec = banner->interval / 1000,
-					.tv_nsec = (banner->interval % 1000) * 1000000,
+				.tv_sec = banner->interval / 1000,
+				.tv_nsec = (banner->interval % 1000) * 1000000,
 			};
 			nanosleep(&sleep_time, NULL);
 		}

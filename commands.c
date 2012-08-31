@@ -144,8 +144,6 @@ static inline int token_categorize(int type, char symbol)
 		else
 			type = TOKEN_CHARACTER;
 	}
-	LOG(LOG_DEBUG, "token categorized to %x due to symbol %c",
-			type, symbol);
 
 	return type;
 }
@@ -182,8 +180,6 @@ static inline int token_convert(char *buffer, int type, void *token, int tsize)
 		else if (!strcmp(buffer, "skip"))
 			type = TOKEN_SKIP;
 	}
-
-	LOG(LOG_DEBUG, "token recognized as %x", type);
 
 	return type;
 }
