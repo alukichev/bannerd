@@ -15,6 +15,7 @@
 
 struct screen_info;
 struct string_list;
+struct commands_data;
 
 struct animation {
 	struct screen_info *fb;
@@ -24,6 +25,7 @@ struct animation {
     int frame_num;
     int frame_count;
     unsigned int interval;
+    struct commands_data *commands;
 };
 
 int animation_init(struct string_list *filenames, int filenames_count,
