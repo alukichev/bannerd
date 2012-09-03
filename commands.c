@@ -304,6 +304,7 @@ static inline int parse_run_skip(int skip, struct animation *banner,
 		break;
 
 	case TOKEN_FRAME:
+		token.number %= banner->frame_count;
 		if (token.number < banner->frame_num)
 			token.number += banner->frame_count;
 		frames = token.number - banner->frame_num;
@@ -329,6 +330,12 @@ static inline int parse_run_skip(int skip, struct animation *banner,
 			*need_exit = 1;
 			return -1;
 		}
+	}
+
+	if (skip && frames == -1) {
+		LOG(LOG_ERR, "\'skip\' must be told how much frames to skip");
+		*need_exit = 1;
+		return -1;
 	}
 
 	LOG(LOG_DEBUG, "%s requested for %d frames", cmd_name, frames);
