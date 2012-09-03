@@ -1,0 +1,98 @@
+\"                                      Hey, EMACS: -*- nroff -*-
+.TH BANNERD 1 "August 2012"
+.SH NAME
+bannerd \- A framebuffer animation daemon
+.SH SYNOPSIS
+.B bannerd
+[\fIoptions\fR] [\fIinterval\fR] \fIframe.bmp\fR...
+.SH DESCRIPTION
+\fBbannerd\fP is a simple program that reads several bitmap files, forks into
+background and renders them to framebuffer with the configured interval. It allows to show
+frames in a slideshow or (faster) animation with a preconfigured time interval between
+them one, several times or indefinitely in "automatic" mode, or to play, pause and skip
+the frames "interactively" through a named pipe. It is mainly intended to be used in
+embedded Linux systems to display e.g. boot animation.
+.PP
+The optional \fBinterval\fP between frames can be given in milliseconds or in
+frames-per-second with the 'fps' suffix, and defaults to 41 (24fps).
+.SH OPTIONS
+\fBbannerd\fP follows the usual GNU command line syntax, with long
+options starting with two dashes (`-') and short variants of each of them.
+.TP
+.B \-c[num], \-\-run\-count[=num]
+Display the sequence of frames \fBnum\fP times, then exit. If \fBnum\fP is omitted,
+repeat only once. If it is less than 1, ignore the option.
+.TP
+.B \-D, \-\-no\-daemon
+Do not fork into background, log to stdout.
+.TP
+.B \-i<fifo>, \-\-command\-pipe=<fifo>
+Open a named pipe \fB<fifo>\fP and wait for commands. The pipe should exist.
+If \fB\-c\fP is specified, it is ignored. See PLAYBACK COMMANDS for command
+syntax.
+.TP
+.B \-p, \-\-preserve\-mode
+Do not restore framebuffer mode on exit which usually means leaving last
+frame displayed.
+.TP
+.B \-v, \-\-verbose
+Do not suppress debug messages in the log (may also be suppressed by syslog
+configuration).
+.PP
+If no options or parameters are given, a brief usage message is written to
+stdout (and an error message to stderr) and the tool exits with exit code 1.
+.SH PLAYBACK COMMANDS
+With \fB\-i\fP option it is possible to externally control an instance of
+\fBbannerd\fP through a named pipe. The program reads a sequence of commands
+from the pipe until it is told to exit. Each command is separated from others
+by a newline or ';' character. Commands can have optional parameters and are
+not case-sensitive.
+.SS exit
+Tells \fBbannerd\fP to exit, optionally preserving the set mode (leaving the
+last displayed frame) if \fB\-p\fP option was given on the command line.
+.SS run [factor]
+Play the animation indefinitely or \fBfactor\fP of times and then pause.
+\fBfactor\fP can be given as an integer or floating-point number, a percentage
+or a last frame number to be displayed.
+.PP
+Integer or float: \fBint\fP or \fB[int].fraction\fP. The animation is played
+given times. E.g. if the number is 2.6, the whole animation is played 2 times,
+from the point it was last paused, and then 0.6 (or 60%) of the total frames in
+the animation are played.
+.PP
+Percent: \fBint%\fP. The given percentage of the animation is played. E.g. if
+the parameter is 260% then the whole animation is played 2 times, from the point
+it was last paused, and then 0.6 (or 60%) of the total frames in the animation
+are played.
+.PP
+Frame number to pause: \fBintf\fP. The animation is displayed until the frame
+with the given number, after which it is paused. E.g. if the parameter is 3f
+then the animation is played until frame number 3. The first frame has number 0.
+The number is silently divided modulo frame count in case it is bigger. If the
+animation is paused on a frame with the bigger number, and then it is requested
+to play until frame with smaller number, then it is played until the end and
+started again until the given frame is displayed.
+.SS skip factor
+Skip a given part of the animation. \fBfactor\fP can be given as an integer or
+floating-point number, a percentage or a last frame number to be skipped. See
+\fBrun\fP for the description of those.
+.SH BUGS AND LIMITATIONS
+The program supports only BMP format, of which monochrome, 2bpp, 4bpp and 8bpp
+images are not supported. Bitmaps must be either uncompressed (most common format) or
+use bitmasks.
+.PP
+All the bitmap data is kept in memory in 32bpp mode. This means considerable
+amount of memory consumed by the process for large animations: for a 800 x 480
+32bpp bitmap 1500kB of memory are needed.
+.PP
+Alpha blending of images is not supported.
+.PP
+On big-endian systems, bitmap data are not parsed correctly.
+.PP
+\fBrun\fP command without a parameter cannot be interrupted.
+.SH SEE ALSO
+.BR plymouth (8)
+.br
+.SH AUTHOR
+bannerd was written by Alexander Lukichev <alexander.lukichev@gmail.com>.
+It can be downloaded from GitHub: https://github.com/alukichev/bannerd.git.
