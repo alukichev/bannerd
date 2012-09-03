@@ -18,19 +18,28 @@ screen. Each frame may have different size but is centered on the screen.
 
   The complete form of its usage is:
 
-  bannerd [-i] [-d] [-s] [interval] frame.bmp ...
+    bannerd [options] [interval[fps]] frame.bmp ...
 
-  -i                Do not fork into the background and log to stdout
-  -d                Do not suppress debug messages in the log
-                    (may also be suppressed by syslog configuration)
-  -s                Display the sequence of frames only once,
-                    then exit
-  -p                Do not restore framebuffer mode on exit  
-                    which usually means leaving last frame displayed
-  interval          Interval in milliseconds between frames. If \'fps\'
-                    suffix is present then it is in frames per second.
-                    Default:  41 (24fps)
-  frame.bmp ...     list of filenames of frames in BMP format
+    -D, --no-daemon       Do not fork into the background, log
+                          to stdout
+    -v, --verbose         Do not suppress debug messages in the
+                          log (may also be suppressed by syslog configuration)
+    -c [<num>],
+    --run-count[=<num>]   Display the sequence of frames <num>
+                          times, then exit. If <num> is omitted,
+                          repeat only once. If it is less than
+                          1, ignore the option
+    -p, --preserve-mode   Do not restore framebuffer mode on exit
+                          which usually means leaving last frame displayed
+    -i <fifo>,
+    --command-pipe=<fifo> Open a named pipe <fifo> and wait for
+                          commands. The pipe should exist. If -c
+                          is specified, it is ignored. See bannerd(1)
+                          man page for command syntax.
+    interval              Interval in milliseconds between frames.
+                          If 'fps' suffix is present then it is in
+                          frames per second. Default:  41 (24fps)
+    frame.bmp ...         list of filenames of frames in BMP format
 
 
   REQUIREMENTS
@@ -77,11 +86,11 @@ per second), you could use
   If you want the program to run once through the sequence of frames and then
 exit by itself, you can use
 
-    # bannerd -s ?.bmp
+    # bannerd -c1 ?.bmp
 
   A useful way to display a single image and exit, leaving it on screen, is
 
-    # bannerd -s -p image.bmp
+    # bannerd -pc image.bmp
 
 
   LIMITATIONS
