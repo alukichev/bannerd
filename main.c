@@ -263,8 +263,8 @@ static int init(int argc, char **argv, struct animation *banner)
 		return 1;
 	string_list_destroy(filenames);
 
-	if (banner->frame_count == 1)
-		banner->interval = (unsigned int)-1; /* Single frame */
+	if (banner->frame_count == 1 && RunCount == 1)
+		banner->interval = 0; /* Single frame, exit after showing it */
 	else if (banner->interval == (unsigned int)-1)
 		banner->interval = 1000 / 24; /* 24fps */
 
