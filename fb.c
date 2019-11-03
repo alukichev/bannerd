@@ -17,6 +17,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <linux/fb.h>
 #include <linux/omapfb.h>

@@ -285,8 +285,8 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
 
             for (i = 0; i < ARRAY_SIZE(_mask_parsers); ++i)
                 if (dh->info.bpp == _mask_parsers[i].bpp) {
-                	LOG(LOG_DEBUG, "Default parser for %ubpp: %u",
-                			dh->info.bpp, i);
+                    LOG(LOG_DEBUG, "Default parser for %hubpp: %u",
+                            dh->info.bpp, i);
                     return _mask_parsers[i].parser;
                 }
         }
@@ -467,7 +467,7 @@ int bmp_read(const char *filename, struct image_info *bitmap)
 
     bmp_buffer = malloc(bitmap_size);
     if (!(bmp_buffer)) {
-        LOG(LOG_ERR, "Could not allocate %d bytes of memory for the bitmap",
+        LOG(LOG_ERR, "Could not allocate %zu bytes of memory for the bitmap",
                 bitmap_size);
         close(fd);
         return -1;
@@ -485,7 +485,7 @@ int bmp_read(const char *filename, struct image_info *bitmap)
 
 #if 1
     if (!r)
-        LOG(LOG_DEBUG, "Parsed bitmap %s: %dx%d, bitmap size in BMP %d bytes",
+        LOG(LOG_DEBUG, "Parsed bitmap %s: %dx%d, bitmap size in BMP %zu bytes",
         		filename, bitmap->width, bitmap->height, bitmap_size);
 #endif /* 0 */
 
