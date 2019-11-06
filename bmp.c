@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,40 +39,40 @@
 
 struct bmpfile_header {
     char magic_bytes[2];
-    unsigned long filesz;
-    unsigned short creator1;
-    unsigned short creator2;
-    unsigned long bmp_offset;   /* bitmap data starts */
+    uint32_t filesz;
+    uint16_t creator1;
+    uint16_t creator2;
+    uint32_t bmp_offset;   /* bitmap data starts */
 };
 
 struct bitmapinfoheader {
-    unsigned long header_size;  /* the size of this header (40 bytes) */
-    long width;                 /* bitmap width in pixels (signed) */
-    long height;                /* bitmap height in pixels (signed) */
-    unsigned short nplanes;     /* number of color planes. Must be 1 */
-    unsigned short bpp;         /* number of bits per pixel */
-    unsigned long compression;  /* must be 0 */
-    unsigned long bmp_size;     /* bitmap size. May be 0 */
-    long hres;                  /* horizontal resolution (pixel per meter) */
-    long vres;                  /* vertical resolution (pixel per meter) */
-    unsigned long ncolors;      /* colors in the color palette, or 0 for 2^n */
-    unsigned long nimpcolors;   /* number of important colors, or 0 */
+    uint32_t header_size;  /* the size of this header (40 bytes) */
+    int32_t width;         /* bitmap width in pixels (signed) */
+    int32_t height;        /* bitmap height in pixels (signed) */
+    uint16_t nplanes;      /* number of color planes. Must be 1 */
+    uint16_t bpp;          /* number of bits per pixel */
+    uint32_t compression;  /* must be 0 */
+    uint32_t bmp_size;     /* bitmap size. May be 0 */
+    int32_t hres;          /* horizontal resolution (pixel per meter) */
+    int32_t vres;          /* vertical resolution (pixel per meter) */
+    uint32_t ncolors;      /* colors in the color palette, or 0 for 2^n */
+    uint32_t nimpcolors;   /* number of important colors, or 0 */
 };
 
 struct bitmapinfov3header {
     struct bitmapinfoheader info; /* initial part is the same as infoheader */
-    unsigned long red_mask;     /* red channel bit mask */
-    unsigned long green_mask;   /* green channel bit mask */
-    unsigned long blue_mask;    /* blue channel bit mask */
-    unsigned long alpha_mask;   /* alpha channel bit mask */
+    uint32_t red_mask;     /* red channel bit mask */
+    uint32_t green_mask;   /* green channel bit mask */
+    uint32_t blue_mask;    /* blue channel bit mask */
+    uint32_t alpha_mask;   /* alpha channel bit mask */
 };
 
 struct bitmapcoreheader {
-    unsigned long header_size;  /* the size of this header (12 bytes)*/
-    unsigned short width;       /* bitmap width in pixels (unsigned) */
-    unsigned short height;      /* bitmap height in pixels (unsigned)*/
-    unsigned short nplanes;     /* number of color planes. Must be 1 */
-    unsigned short bpp;         /* bits per pixel */
+    uint32_t header_size;  /* the size of this header (12 bytes)*/
+    uint16_t width;        /* bitmap width in pixels (unsigned) */
+    uint16_t height;       /* bitmap height in pixels (unsigned)*/
+    uint16_t nplanes;      /* number of color planes. Must be 1 */
+    uint16_t bpp;          /* bits per pixel */
 };
 
 typedef union {
@@ -82,16 +83,16 @@ typedef union {
 
 #pragma pack(pop)
 
-typedef void * (*LINE_PARSER)(unsigned long *, void *, int);
+typedef void * (*LINE_PARSER)(uint32_t *, void *, int);
 
-static void *_ParseLineARGB4444(unsigned long *out, void *line, int width)
+static void *_ParseLineARGB4444(uint32_t *out, void *line, int width)
 {
-    unsigned short *in = (unsigned short *)line;
+    uint16_t *in = (uint16_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long b, g, r, a;
-        unsigned long w = (unsigned long)le16toh(*in);
+        uint32_t b, g, r, a;
+        uint32_t w = le16toh(*in);
 
         /* Simultaneously shift the bitmaps and scale values from 16 to 256 */
         b = (w & 0x000F) << 4;
@@ -106,14 +107,14 @@ static void *_ParseLineARGB4444(unsigned long *out, void *line, int width)
     return in;
 }
 
-static void *_ParseLineRGB4444(unsigned long *out, void *line, int width)
+static void *_ParseLineRGB4444(uint32_t *out, void *line, int width)
 {
-    unsigned short *in = (unsigned short *)line;
+    uint16_t *in = (uint16_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long b, g, r;
-        unsigned long w = (unsigned long)le16toh(*in);
+        uint32_t b, g, r;
+        uint32_t w = le16toh(*in);
 
         /* Simultaneously shift the bitmaps and scale values from 16 to 256 */
         b = (w & 0x000F) << 4;
@@ -127,14 +128,14 @@ static void *_ParseLineRGB4444(unsigned long *out, void *line, int width)
     return in;
 }
 
-static void *_ParseLineRGB565(unsigned long *out, void *line, int width)
+static void *_ParseLineRGB565(uint32_t *out, void *line, int width)
 {
-    unsigned short *in = (unsigned short *)line;
+    uint16_t *in = (uint16_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long b, g, r;
-        unsigned long w = (unsigned long)le16toh(*in);
+        uint32_t b, g, r;
+        uint32_t w = le16toh(*in);
 
         b = (w & 0x001F) >> 0,  b = (b * 0x100) / 0x20, b <<= 0;
         g = (w & 0x07E0) >> 5,  g = (g * 0x100) / 0x40, g <<= 8;
@@ -147,14 +148,14 @@ static void *_ParseLineRGB565(unsigned long *out, void *line, int width)
     return in;
 }
 
-static void *_ParseLineARGB1555(unsigned long *out, void *line, int width)
+static void *_ParseLineARGB1555(uint32_t *out, void *line, int width)
 {
-    unsigned short *in = (unsigned short *)line;
+    uint16_t *in = (uint16_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long b, g, r, a;
-        unsigned long w = (unsigned long)le16toh(*in);
+        uint32_t b, g, r, a;
+        uint32_t w = le16toh(*in);
 
         b = (w & 0x001F) >> 0,  b = (b * 0x100) / 0x20, b <<= 0;
         g = (w & 0x03E0) >> 5,  g = (g * 0x100) / 0x20, g <<= 8;
@@ -168,14 +169,14 @@ static void *_ParseLineARGB1555(unsigned long *out, void *line, int width)
     return in;
 }
 
-static void *_ParseLineXRGB1555(unsigned long *out, void *line, int width)
+static void *_ParseLineXRGB1555(uint32_t *out, void *line, int width)
 {
-    unsigned short *in = (unsigned short *)line;
+    uint16_t *in = (uint16_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long b, g, r;
-        unsigned long w = (unsigned long)le16toh(*in);
+        uint32_t b, g, r;
+        uint32_t w = le16toh(*in);
 
         b = (w & 0x001F) >> 0,  b = (b * 0x100) / 0x20, b <<= 0;
         g = (w & 0x03E0) >> 5,  g = (g * 0x100) / 0x20, g <<= 8;
@@ -188,20 +189,20 @@ static void *_ParseLineXRGB1555(unsigned long *out, void *line, int width)
     return in;
 }
 
-static void *_ParseLineRGB888(unsigned long *out, void *line, int width)
+static void *_ParseLineRGB888(uint32_t *out, void *line, int width)
 {
-    unsigned short *in = (unsigned short *)line;
+    uint16_t *in = (uint16_t *)line;
     int pads = (4 - ((width * 24) / 8) % 4) & 0x3;
     int inc = 0;
     int j;
 
     for (j = 0; j < width; ++j, inc ^= 1) {
-        unsigned long w = (unsigned long)le16toh(*in++);
+        uint32_t w = le16toh(*in++);
 
         if(inc)
-            w = (w >> 8) | ((unsigned long)le16toh(*in++) << 8);
+            w = (w >> 8) | ((uint32_t)le16toh(*in++) << 8);
         else
-            w |= ((unsigned long)le16toh(*in) & 0x00FF) << 16;
+            w |= (uint32_t)(le16toh(*in) & 0x00FF) << 16;
 
         w |= 0xFF000000; /* Alpha channel is 1 */
 
@@ -211,14 +212,14 @@ static void *_ParseLineRGB888(unsigned long *out, void *line, int width)
     return (unsigned char *)in + pads;
 }
 
-static void *_ParseLineRGBA8888(unsigned long *out, void *line, int width)
+static void *_ParseLineRGBA8888(uint32_t *out, void *line, int width)
 {
-    unsigned long *in = (unsigned long *)line;
+    uint32_t *in = (uint32_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long w = le32toh(*in);
-        unsigned long a = w & 0xFF;
+        uint32_t w = le32toh(*in);
+        uint32_t a = w & 0xFF;
 
         w = (w >> 8) | (a << 24);
 
@@ -228,21 +229,21 @@ static void *_ParseLineRGBA8888(unsigned long *out, void *line, int width)
     return in;
 }
 
-static void *_ParseLineARGB8888(unsigned long *out, void *line, int width)
+static void *_ParseLineARGB8888(uint32_t *out, void *line, int width)
 {
     memcpy(out, line, width * 4);
 
-    return ((unsigned long *)line) + width;
+    return ((uint32_t *)line) + width;
 }
 
-static void *_ParseLineRGBX8888(unsigned long *out, void *line, int width)
+static void *_ParseLineRGBX8888(uint32_t *out, void *line, int width)
 {
-    unsigned long *in = (unsigned long *)line;
+    uint32_t *in = (uint32_t *)line;
     int j;
 
     for (j = 0; j < width; ++j, ++in) {
-        unsigned long w = le32toh(*in);
-        unsigned long a = w & 0xFF;
+        uint32_t w = le32toh(*in);
+        uint32_t a = w & 0xFF;
 
         w = 0xFF000000 | (w >> 8); /* Set the alpha channel to 1 */
 
@@ -256,11 +257,11 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
 {
     static const struct _parser_pattern {
         LINE_PARSER parser;
-        unsigned long red;
-        unsigned long green;
-        unsigned long blue;
-        unsigned long transp;
-        unsigned long bpp; /* This field is used if the bitmap has no masks */
+        uint32_t red;
+        uint32_t green;
+        uint32_t blue;
+        uint32_t transp;
+        uint32_t bpp; /* This field is used if the bitmap has no masks */
     } _mask_parsers[] = {
       {&_ParseLineARGB4444, 0x0F00,    0x00F0,    0x000F,    0xF000,     0},
       {&_ParseLineRGB4444,  0x0F00,    0x00F0,    0x000F,    0x0000,     0},
@@ -297,7 +298,7 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
             unsigned int i;
             struct bitmapinfov3header * h = &dh->infov3;
 
-            LOG(LOG_DEBUG, "%s(): bit masks b = %08lX, g = %08lX, r = %08lX, a = %08lX",
+            LOG(LOG_DEBUG, "%s(): bit masks b = %08X, g = %08X, r = %08X, a = %08X",
                    __func__, h->blue_mask, h->green_mask,
                    h->red_mask, h->alpha_mask);
 
@@ -319,9 +320,9 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
 }
 
 static int _ParseBitmap(char *from, struct image_info *image,
-                        unsigned long in_size, DIB_HEADER *dh)
+                        uint32_t in_size, DIB_HEADER *dh)
 {
-    unsigned long *out;
+    uint32_t *out;
     int width = (dh->info.height < 0) ? image->width : -image->width;
     int i;
     LINE_PARSER parser;
@@ -359,16 +360,16 @@ static int _ParseBitmap(char *from, struct image_info *image,
 #if 1
 static void _DumpInfoheader(struct bitmapinfoheader * ih)
 {
-    LOG(LOG_DEBUG, "Header size %lu\n"
-    		"Image %ldx%ldx%hu\n"
-    		"Planes: %hu\n"
-    		"Compression: %lx\n"
-    		"Bitmap size %lu\n"
-    		"Resolution: %ldx%ld\n"
-    		"ncolors = %lu, nimpcolors = %lu\n",
-           ih->header_size, ih->width, ih->height, ih->bpp,
-           ih->nplanes, ih->compression, ih->bmp_size, ih->hres, ih->vres,
-           ih->ncolors, ih->nimpcolors);
+    LOG(LOG_DEBUG, "Header size %u\n"
+            "Image %dx%dx%hu\n"
+            "Planes: %hu\n"
+            "Compression: %x\n"
+            "Bitmap size %u\n"
+            "Resolution: %dx%d\n"
+            "ncolors = %u, nimpcolors = %u\n",
+            ih->header_size, ih->width, ih->height, ih->bpp,
+            ih->nplanes, ih->compression, ih->bmp_size, ih->hres, ih->vres,
+            ih->ncolors, ih->nimpcolors);
 }
 #endif /* 1 */
 
@@ -384,8 +385,8 @@ static int _ParseHeaders(const char *filename, int fd,
      * portability. */
 
     if (bh->magic_bytes[0] != 'B' || bh->magic_bytes[1] != 'M'
-            || bh->filesz != (unsigned long)fst.st_size
-            || (unsigned long)fst.st_size <= bh->bmp_offset) {
+            || bh->filesz != (uint32_t)fst.st_size
+            || (uint32_t)fst.st_size <= bh->bmp_offset) {
         LOG(LOG_ERR, "Incorrect bitmap format in %s", filename);
         return -1;
     }
@@ -401,7 +402,7 @@ static int _ParseHeaders(const char *filename, int fd,
 
     /* At least BITMAPINFOHEADER bytes */
     if (dh->info.header_size >= sizeof(dh->info)) {
-        unsigned long bitmap_size;
+        uint32_t bitmap_size;
 
         bitmap_size = (abs(dh->info.height) * abs(dh->info.width)
                 * dh->info.bpp + 7) / 8;
@@ -417,7 +418,7 @@ static int _ParseHeaders(const char *filename, int fd,
             return -1;
         }
     } else { /* BITMAPCOREHEADER */
-        unsigned long bitmap_size;
+        uint32_t bitmap_size;
 
         bitmap_size = (dh->core.width * dh->core.height
                        * dh->core.bpp + 7) / 8;

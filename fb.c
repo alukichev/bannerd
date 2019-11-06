@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -33,7 +34,7 @@ int fb_init(struct screen_info *sd)
     struct fb_fix_screeninfo fix_info;
     const struct fb_bitfield color = { .length = 8, .offset = 0, .msb_right = 0 };
     int i;
-    unsigned long * fb;
+    uint32_t *fb;
 
     sd->fd = open("/dev/fb0", O_RDWR);
 
@@ -86,7 +87,7 @@ int fb_init(struct screen_info *sd)
         return -1;
     }
 
-    fb = (unsigned long *)sd->fb;
+    fb = (uint32_t *)sd->fb;
 
     for (i = 0; i < sd->fb_size / 4; ++i, ++fb)
         *fb = 0xFF000000; /* Reset the background to black, set alpha to 1 */
@@ -171,8 +172,8 @@ int fb_omap_update_screen(struct screen_info *sd, int x, int y, int w, int h)
 int fb_write_bitmap(struct screen_info *sd, int x, int y, struct image_info *bitmap)
 {
     unsigned char *line;
-    unsigned long *in = bitmap->pixel_buffer;
-    unsigned long *out;
+    uint32_t *in = bitmap->pixel_buffer;
+    uint32_t *out;
     int i;
     int w = bitmap->width, clip_l = 0, clip_r = 0;
     int h = bitmap->height;
@@ -206,10 +207,10 @@ int fb_write_bitmap(struct screen_info *sd, int x, int y, struct image_info *bit
         h = sd->height - y;
 
     line = (unsigned char *)sd->fb + y * sd->stride;
-    out = ((unsigned long *)line) + x;
+    out = ((uint32_t *)line) + x;
 
     for (i = 0; i < h; ++i, line += sd->stride,
-            out = ((unsigned long *)line) + x) {
+            out = ((uint32_t *)line) + x) {
         memcpy(out, in, w * 4);
         in += w + clip_r + clip_l;
     }
