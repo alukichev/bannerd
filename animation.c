@@ -66,7 +66,6 @@ int animation_init(struct string_list *filenames, int filenames_count,
 		struct screen_info *fb, struct animation *a)
 {
     int i;
-    struct image_info *frame;
     int screen_w, screen_h;
 
     if (!fb->fb_size) {
@@ -91,7 +90,6 @@ int animation_init(struct string_list *filenames, int filenames_count,
 
     screen_w = fb->width;
     screen_h = fb->height;
-    frame = &a->frames[0];
     a->x = screen_w / 2;
     a->y = screen_h / 2;
 

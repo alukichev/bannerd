@@ -96,9 +96,9 @@ static void *_ParseLineARGB4444(uint32_t *out, void *line, int width)
 
         /* Simultaneously shift the bitmaps and scale values from 16 to 256 */
         b = (w & 0x000F) << 4;
-        g = (w & 0x00F0) << (8 - 4) + 4;
-        r = (w & 0x0F00) << (12 - 4) + 4;
-        a = (w & 0xF000) << (16 - 4) + 4;
+        g = (w & 0x00F0) << ((8 - 4) + 4);
+        r = (w & 0x0F00) << ((12 - 4) + 4);
+        a = (w & 0xF000) << ((16 - 4) + 4);
         w = a | r | g | b;
 
         *out++ = htole32(w);
@@ -118,8 +118,8 @@ static void *_ParseLineRGB4444(uint32_t *out, void *line, int width)
 
         /* Simultaneously shift the bitmaps and scale values from 16 to 256 */
         b = (w & 0x000F) << 4;
-        g = (w & 0x00F0) << (8 - 4) + 4;
-        r = (w & 0x0F00) << (12 - 4) + 4;
+        g = (w & 0x00F0) << ((8 - 4) + 4);
+        r = (w & 0x0F00) << ((12 - 4) + 4);
         w = 0xFF000000 | r | g | b;
 
         *out++ = htole32(w);
@@ -243,7 +243,6 @@ static void *_ParseLineRGBX8888(uint32_t *out, void *line, int width)
 
     for (j = 0; j < width; ++j, ++in) {
         uint32_t w = le32toh(*in);
-        uint32_t a = w & 0xFF;
 
         w = 0xFF000000 | (w >> 8); /* Set the alpha channel to 1 */
 
@@ -319,14 +318,14 @@ static LINE_PARSER _GetLineParser(DIB_HEADER *dh)
     return NULL;
 }
 
-static int _ParseBitmap(char *from, struct image_info *image,
+static int _ParseBitmap(unsigned char *from, struct image_info *image,
                         uint32_t in_size, DIB_HEADER *dh)
 {
     uint32_t *out;
     int width = (dh->info.height < 0) ? image->width : -image->width;
     int i;
     LINE_PARSER parser;
-    char *bitmap_start = from;
+    unsigned char *bitmap_start = from;
 
     image->pixel_buffer = malloc(image->width * image->height * sizeof(*out));
 
