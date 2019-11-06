@@ -150,6 +150,8 @@ static inline int token_categorize(int type, char symbol)
 
 static inline int token_convert(char *buffer, int type, void *token, int tsize)
 {
+	float fv;
+
 	/* We already checked that it fits (except for
 	 * string) */
 	switch (type) {
@@ -160,7 +162,8 @@ static inline int token_convert(char *buffer, int type, void *token, int tsize)
 		break;
 
 	case TOKEN_FLOAT:
-		sscanf(buffer, "%f", token);
+		sscanf(buffer, "%f", &fv);
+		*(float *)token = fv;
 		break;
 
 	default:

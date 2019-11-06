@@ -10,6 +10,9 @@
  *  version 2 as published by the Free Software Foundation.
  */
 
+#include <stdlib.h>
+#include <time.h>
+
 #include "animation.h"
 #include "bmp.h"
 #include "fb.h"
@@ -63,7 +66,6 @@ int animation_init(struct string_list *filenames, int filenames_count,
 		struct screen_info *fb, struct animation *a)
 {
     int i;
-    struct image_info *frame;
     int screen_w, screen_h;
 
     if (!fb->fb_size) {
@@ -77,7 +79,7 @@ int animation_init(struct string_list *filenames, int filenames_count,
     a->frame_count = filenames_count;
     a->frames = malloc(filenames_count * sizeof(struct image_info));
     if (a->frames == NULL) {
-        LOG(LOG_ERR, "Unable to get %d bytes of memory for animation",
+        LOG(LOG_ERR, "Unable to get %zu bytes of memory for animation",
             filenames_count * sizeof(struct image_info));
         return -1;
     }
@@ -88,7 +90,6 @@ int animation_init(struct string_list *filenames, int filenames_count,
 
     screen_w = fb->width;
     screen_h = fb->height;
-    frame = &a->frames[0];
     a->x = screen_w / 2;
     a->y = screen_h / 2;
 
